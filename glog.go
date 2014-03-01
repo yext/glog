@@ -528,9 +528,13 @@ where the fields are defined as follows:
 	msg              The user-supplied message
 */
 func (l *loggingT) header(s severity) *buffer {
+	return l.headerWithDepth(s, 1)
+}
+
+func (l *loggingT) headerWithDepth(s severity, extraDepth int) *buffer {
 	// Lmmdd hh:mm:ss.uuuuuu threadid file:line]
 	now := timeNow()
-	_, file, line, ok := runtime.Caller(3) // It's always the same number of frames to the user's call.
+	_, file, line, ok := runtime.Caller(3 + extraDepth) // It's always the same number of frames to the user's call.
 	if !ok {
 		file = "???"
 		line = 1
@@ -612,34 +616,50 @@ func (buf *buffer) someDigits(i, d int) int {
 }
 
 func (l *loggingT) println(s severity, args ...interface{}) {
-	buf := l.header(s)
+	l.printlnWithDepth(s, 1, args)
+}
+
+func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interface{}) {
+	buf := l.headerWithDepth(s, extraDepth)
 	fmt.Fprintln(buf, args...)
-	l.output(s, buf)
+	l.outputWithDepth(s, buf, extraDepth)
 }
 
 func (l *loggingT) print(s severity, args ...interface{}) {
-	buf := l.header(s)
+	l.printWithDepth(s, 1, args...)
+}
+
+func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{}) {
+	buf := l.headerWithDepth(s, extraDepth)
 	fmt.Fprint(buf, args...)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
-	l.output(s, buf)
+	l.outputWithDepth(s, buf, extraDepth)
 }
 
 func (l *loggingT) printf(s severity, format string, args ...interface{}) {
-	buf := l.header(s)
+	l.printfWithDepth(s, 1, format, args...)
+}
+
+func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, args ...interface{}) {
+	buf := l.headerWithDepth(s, extraDepth)
 	fmt.Fprintf(buf, format, args...)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
-	l.output(s, buf)
+	l.outputWithDepth(s, buf, extraDepth)
 }
 
 // output writes the data to the log files and releases the buffer.
 func (l *loggingT) output(s severity, buf *buffer) {
+	l.outputWithDepth(s, buf, 1)
+}
+
+func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) {
 	l.mu.Lock()
 	if l.traceLocation.isSet() {
-		_, file, line, ok := runtime.Caller(3) // It's always the same number of frames to the user's call (same as header).
+		_, file, line, ok := runtime.Caller(3 + extraDepth) // It's always the same number of frames to the user's call (same as header).
 		if ok && l.traceLocation.match(file, line) {
 			buf.Write(stacks(false))
 		}
@@ -942,11 +962,27 @@ func (v Verbose) Info(args ...interface{}) {
 	}
 }
 
+// InfoWithDepth is equivalent to Info but with a specified extra depth (on the call stack).
+// See the documentation of V for usage.
+func (v Verbose) InfoWithDepth(extraDepth int, args ...interface{}) {
+	if v {
+		logging.printWithDepth(infoLog, extraDepth, args...)
+	}
+}
+
 // Infoln is equivalent to the global Infoln function, guarded by the value of v.
 // See the documentation of V for usage.
 func (v Verbose) Infoln(args ...interface{}) {
 	if v {
 		logging.println(infoLog, args...)
+	}
+}
+
+// InfolnWithDepth is equivalent to Infoln but with a specified extra depth (on the call stack).
+// See the documentation of V for usage.
+func (v Verbose) InfolnWithDepth(extraDepth int, args ...interface{}) {
+	if v {
+		logging.printlnWithDepth(infoLog, extraDepth, args...)
 	}
 }
 
@@ -958,10 +994,24 @@ func (v Verbose) Infof(format string, args ...interface{}) {
 	}
 }
 
+// InfofWithDepth is equivalent to Infof but with a specified extra depth (on the call stack).
+// See the documentation of V for usage.
+func (v Verbose) InfofWithDepth(extraDepth int, format string, args ...interface{}) {
+	if v {
+		logging.printfWithDepth(infoLog, extraDepth, format, args...)
+	}
+}
+
 // Info logs to the INFO log.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Info(args ...interface{}) {
 	logging.print(infoLog, args...)
+}
+
+// InfoWithDepth is equivalent to Info but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func InfoWithDepth(extraDepth int, args ...interface{}) {
+	logging.printWithDepth(infoLog, extraDepth, args...)
 }
 
 // Infoln logs to the INFO log.
@@ -970,10 +1020,22 @@ func Infoln(args ...interface{}) {
 	logging.println(infoLog, args...)
 }
 
+// InfolnWithDepth is equivalent to Infoln but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
+func InfolnWithDepth(extraDepth int, args ...interface{}) {
+	logging.printlnWithDepth(infoLog, extraDepth, args...)
+}
+
 // Infof logs to the INFO log.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Infof(format string, args ...interface{}) {
 	logging.printf(infoLog, format, args...)
+}
+
+// InfofWithDepth is equivalent to Infof but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
+func InfofWithDepth(extraDepth int, format string, args ...interface{}) {
+	logging.printfWithDepth(infoLog, extraDepth, format, args...)
 }
 
 // Warning logs to the WARNING and INFO logs.
@@ -982,10 +1044,22 @@ func Warning(args ...interface{}) {
 	logging.print(warningLog, args...)
 }
 
+// WarningWithDepth is equivalent to Warning but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func WarningWithDepth(extraDepth int, args ...interface{}) {
+	logging.printWithDepth(warningLog, extraDepth, args...)
+}
+
 // Warningln logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Warningln(args ...interface{}) {
 	logging.println(warningLog, args...)
+}
+
+// WarninglnWithDepth is equivalent to Warningln but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
+func WarninglnWithDepth(extraDepth int, args ...interface{}) {
+	logging.printlnWithDepth(warningLog, extraDepth, args...)
 }
 
 // Warningf logs to the WARNING and INFO logs.
@@ -994,10 +1068,22 @@ func Warningf(format string, args ...interface{}) {
 	logging.printf(warningLog, format, args...)
 }
 
+// WarningfWithDepth is equivalent to Warningf but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
+func WarningfWithDepth(extraDepth int, format string, args ...interface{}) {
+	logging.printfWithDepth(warningLog, extraDepth, format, args...)
+}
+
 // Error logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Error(args ...interface{}) {
 	logging.print(errorLog, args...)
+}
+
+// ErrorWithDepth is equivalent to Error but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func ErrorWithDepth(extraDepth int, args ...interface{}) {
+	logging.printWithDepth(errorLog, extraDepth, args...)
 }
 
 // Errorln logs to the ERROR, WARNING, and INFO logs.
@@ -1006,10 +1092,22 @@ func Errorln(args ...interface{}) {
 	logging.println(errorLog, args...)
 }
 
+// ErrorlnWithDepth is equivalent to Errorln but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
+func ErrorlnWithDepth(extraDepth int, args ...interface{}) {
+	logging.printlnWithDepth(errorLog, extraDepth, args...)
+}
+
 // Errorf logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Errorf(format string, args ...interface{}) {
 	logging.printf(errorLog, format, args...)
+}
+
+// ErrorfWithDepth is equivalent to Errorf but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
+func ErrorfWithDepth(extraDepth int, format string, args ...interface{}) {
+	logging.printfWithDepth(errorLog, extraDepth, format, args...)
 }
 
 // Fatal logs to the FATAL, ERROR, WARNING, and INFO logs,
@@ -1019,6 +1117,12 @@ func Fatal(args ...interface{}) {
 	logging.print(fatalLog, args...)
 }
 
+// FatalWithDepth is equivalent to Fatal but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func FatalWithDepth(extraDepth int, args ...interface{}) {
+	logging.printWithDepth(fatalLog, extraDepth, args...)
+}
+
 // Fatalln logs to the FATAL, ERROR, WARNING, and INFO logs,
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
@@ -1026,9 +1130,21 @@ func Fatalln(args ...interface{}) {
 	logging.println(fatalLog, args...)
 }
 
+// FatallnWithDepth is equivalent to Fatalln but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
+func FatallnWithDepth(extraDepth int, args ...interface{}) {
+	logging.printlnWithDepth(fatalLog, extraDepth, args...)
+}
+
 // Fatalf logs to the FATAL, ERROR, WARNING, and INFO logs,
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Fatalf(format string, args ...interface{}) {
 	logging.printf(fatalLog, format, args...)
+}
+
+// FatalfWithDepth is equivalent to Fatalf but with a specified extra depth (on the call stack).
+// Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
+func FatalfWithDepth(extraDepth int, format string, args ...interface{}) {
+	logging.printfWithDepth(fatalLog, extraDepth, format, args...)
 }
