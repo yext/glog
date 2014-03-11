@@ -620,9 +620,18 @@ func (l *loggingT) println(s severity, args ...interface{}) {
 }
 
 func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interface{}) {
+	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
 	fmt.Fprintln(buf, args...)
+
+	message := buf.Bytes()
+	mess := make([]byte, len(message))
+	copy(mess, message)
+
 	l.outputWithDepth(s, buf, extraDepth)
+
+	e := NewEvent(s, message, dataArgs, extraDepth)
+	eventForBackends(e)
 }
 
 func (l *loggingT) print(s severity, args ...interface{}) {
@@ -630,12 +639,21 @@ func (l *loggingT) print(s severity, args ...interface{}) {
 }
 
 func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{}) {
+	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
 	fmt.Fprint(buf, args...)
+
+	message := buf.Bytes()
+	mess := make([]byte, len(message))
+	copy(mess, message)
+
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	l.outputWithDepth(s, buf, extraDepth)
+
+	e := NewEvent(s, message, dataArgs, extraDepth)
+	eventForBackends(e)
 }
 
 func (l *loggingT) printf(s severity, format string, args ...interface{}) {
@@ -643,12 +661,21 @@ func (l *loggingT) printf(s severity, format string, args ...interface{}) {
 }
 
 func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, args ...interface{}) {
+	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
 	fmt.Fprintf(buf, format, args...)
+
+	message := buf.Bytes()
+	mess := make([]byte, len(message))
+	copy(mess, message)
+
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	l.outputWithDepth(s, buf, extraDepth)
+
+	e := NewEvent(s, message, dataArgs, extraDepth)
+	eventForBackends(e)
 }
 
 // output writes the data to the log files and releases the buffer.
