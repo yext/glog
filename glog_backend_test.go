@@ -13,8 +13,7 @@ type testBackend struct {
 }
 
 func TestBackends(t *testing.T) {
-	setFlags()
-	defer logging.swap(logging.newBuffers())
+	defer resetOutput(setBuffer())
 
 	buf := bytes.NewBufferString("")
 	backends := []testBackend{
@@ -69,8 +68,7 @@ func TestBackends(t *testing.T) {
 }
 
 func TestIgnoreData(t *testing.T) {
-	setFlags()
-	defer logging.swap(logging.newBuffers())
+	defer resetOutput(setBuffer())
 
 	comm := RegisterBackend()
 	go func() {
@@ -83,22 +81,24 @@ func TestIgnoreData(t *testing.T) {
 
 	Error("interesting content", Data("content to ignore"))
 
-	if contains(errorLog, "content to ignore", t) {
+	if contains("content to ignore", t) {
 		t.Error("glog did not ignore data which it was told to ignore")
 	}
 
-	if !contains(errorLog, "interesting content", t) {
+	if !contains("interesting content", t) {
 		t.Error("glog ignored content it was not supposed to")
 	}
 }
 
 func BenchmarkError(b *testing.B) {
+	defer resetOutput(setBuffer())
 	for i := 0; i < b.N; i++ {
 		Info("error")
 	}
 }
 
 func BenchmarkBackendError_1Backend(b *testing.B) {
+	defer resetOutput(setBuffer())
 	RegisterBackend()
 
 	for i := 0; i < b.N; i++ {
@@ -107,6 +107,7 @@ func BenchmarkBackendError_1Backend(b *testing.B) {
 }
 
 func BenchmarkBackendError_2Backends(b *testing.B) {
+	defer resetOutput(setBuffer())
 	for i := 0; i < 2; i++ {
 		RegisterBackend()
 	}
@@ -117,6 +118,7 @@ func BenchmarkBackendError_2Backends(b *testing.B) {
 }
 
 func BenchmarkBackendError_3Backends(b *testing.B) {
+	defer resetOutput(setBuffer())
 	for i := 0; i < 3; i++ {
 		RegisterBackend()
 	}
@@ -127,6 +129,7 @@ func BenchmarkBackendError_3Backends(b *testing.B) {
 }
 
 func BenchmarkBackendError_4Backends(b *testing.B) {
+	defer resetOutput(setBuffer())
 	for i := 0; i < 4; i++ {
 		RegisterBackend()
 	}
@@ -137,6 +140,7 @@ func BenchmarkBackendError_4Backends(b *testing.B) {
 }
 
 func BenchmarkBackendError_5Backends(b *testing.B) {
+	defer resetOutput(setBuffer())
 	for i := 0; i < 5; i++ {
 		RegisterBackend()
 	}

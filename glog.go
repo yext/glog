@@ -39,17 +39,6 @@
 // This package provides several flags that modify this behavior.
 // As a result, flag.Parse must be called before any logging is done.
 //
-//	-logtostderr=false
-//		Logs are written to standard error instead of to files.
-//	-alsologtostderr=false
-//		Logs are written to standard error as well as to files.
-//	-stderrthreshold=ERROR
-//		Log events at or above this severity are logged to standard
-//		error as well as to files.
-//	-log_dir=""
-//		Log files will be written to this directory instead of the
-//		default temporary directory.
-//
 //	Other flags provide aids to debugging.
 //
 //	-log_backtrace_at=""
@@ -71,7 +60,6 @@
 package glog
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"flag"
@@ -86,6 +74,19 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+type Writer interface {
+	io.Writer
+	Flush()
+}
+
+var Output Writer = fileWriter{os.Stdout}
+
+type fileWriter struct{ *os.File }
+
+func (wr fileWriter) Flush() {
+	wr.File.Sync()
+}
 
 // severity identifies the sort of log: info, warning etc. It also implements
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
@@ -108,53 +109,6 @@ var severityName = []string{
 	warningLog: "WARNING",
 	errorLog:   "ERROR",
 	fatalLog:   "FATAL",
-}
-
-// get returns the value of the severity.
-func (s *severity) get() severity {
-	return severity(atomic.LoadInt32((*int32)(s)))
-}
-
-// set sets the value of the severity.
-func (s *severity) set(val severity) {
-	atomic.StoreInt32((*int32)(s), int32(val))
-}
-
-// String is part of the flag.Value interface.
-func (s *severity) String() string {
-	return strconv.FormatInt(int64(*s), 10)
-}
-
-// Get is part of the flag.Value interface.
-func (s *severity) Get() interface{} {
-	return *s
-}
-
-// Set is part of the flag.Value interface.
-func (s *severity) Set(value string) error {
-	var threshold severity
-	// Is it a known name?
-	if v, ok := severityByName(value); ok {
-		threshold = v
-	} else {
-		v, err := strconv.Atoi(value)
-		if err != nil {
-			return err
-		}
-		threshold = severity(v)
-	}
-	logging.stderrThreshold.set(threshold)
-	return nil
-}
-
-func severityByName(s string) (severity, bool) {
-	s = strings.ToUpper(s)
-	for i, name := range severityName {
-		if name == s {
-			return severity(i), true
-		}
-	}
-	return 0, false
 }
 
 // OutputStats tracks the number of output lines and bytes written.
@@ -384,23 +338,10 @@ func (t *traceLocation) Set(value string) error {
 	return nil
 }
 
-// flushSyncWriter is the interface satisfied by logging destinations.
-type flushSyncWriter interface {
-	Flush() error
-	Sync() error
-	io.Writer
-}
-
 func init() {
-	flag.BoolVar(&logging.toStderr, "logtostderr", false, "log to standard error instead of files")
-	flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
 	flag.Var(&logging.verbosity, "v", "log level for V logs")
-	flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this threshold go to stderr")
 	flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
 	flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
-
-	// Default stderrThreshold is ERROR.
-	logging.stderrThreshold = errorLog
 
 	logging.setVState(0, nil, false)
 	go logging.flushDaemon()
@@ -413,15 +354,6 @@ func Flush() {
 
 // loggingT collects all the global state of the logging setup.
 type loggingT struct {
-	// Boolean flags. Not handled atomically because the flag.Value interface
-	// does not let us avoid the =true, and that shorthand is necessary for
-	// compatibility. TODO: does this matter enough to fix? Seems unlikely.
-	toStderr     bool // The -logtostderr flag.
-	alsoToStderr bool // The -alsologtostderr flag.
-
-	// Level flag. Handled atomically.
-	stderrThreshold severity // The -stderrthreshold flag.
-
 	// freeList is a list of byte buffers, maintained under freeListMu.
 	freeList *buffer
 	// freeListMu maintains the free list. It is separate from the main mutex
@@ -432,8 +364,6 @@ type loggingT struct {
 	// mu protects the remaining elements of this structure and is
 	// used to synchronize logging.
 	mu sync.Mutex
-	// file holds writer for each of the log types.
-	file [numSeverity]flushSyncWriter
 	// pcs is used in V to avoid an allocation when computing the caller's PC.
 	pcs [1]uintptr
 	// vmap is a cache of the V Level for each V() call site, identified by PC.
@@ -568,9 +498,7 @@ func (l *loggingT) headerWithDepth(s severity, extraDepth int) *buffer {
 	buf.tmp[14] = '.'
 	buf.nDigits(6, 15, now.Nanosecond()/1000)
 	buf.tmp[21] = ' '
-	buf.nDigits(5, 22, pid) // TODO: should be TID
-	buf.tmp[27] = ' '
-	buf.Write(buf.tmp[:28])
+	buf.Write(buf.tmp[:22])
 	buf.WriteString(file)
 	buf.tmp[0] = ':'
 	n := buf.someDigits(1, line)
@@ -686,51 +614,15 @@ func (l *loggingT) output(s severity, buf *buffer) {
 func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) {
 	l.mu.Lock()
 	if l.traceLocation.isSet() {
-		_, file, line, ok := runtime.Caller(3 + extraDepth) // It's always the same number of frames to the user's call (same as header).
+		_, file, line, ok := runtime.Caller(3 + extraDepth)
 		if ok && l.traceLocation.match(file, line) {
 			buf.Write(stacks(false))
 		}
 	}
 	data := buf.Bytes()
-	if l.toStderr {
-		os.Stderr.Write(data)
-	} else {
-		if l.alsoToStderr || s >= l.stderrThreshold.get() {
-			os.Stderr.Write(data)
-		}
-		if l.file[s] == nil {
-			if err := l.createFiles(s); err != nil {
-				os.Stderr.Write(data) // Make sure the message appears somewhere.
-				l.exit(err)
-			}
-		}
-		switch s {
-		case fatalLog:
-			l.file[fatalLog].Write(data)
-			fallthrough
-		case errorLog:
-			l.file[errorLog].Write(data)
-			fallthrough
-		case warningLog:
-			l.file[warningLog].Write(data)
-			fallthrough
-		case infoLog:
-			l.file[infoLog].Write(data)
-		}
-	}
+	Output.Write(data)
 	if s == fatalLog {
-		// Make sure we see the trace for the current goroutine on standard error.
-		if !l.toStderr {
-			os.Stderr.Write(stacks(false))
-		}
-		// Write the stack trace for all goroutines to the files.
-		trace := stacks(true)
-		logExitFunc = func(error) {} // If we get a write error, we'll still exit below.
-		for log := fatalLog; log >= infoLog; log-- {
-			if f := l.file[log]; f != nil { // Can be nil if -logtostderr is set.
-				f.Write(trace)
-			}
-		}
+		Output.Write(stacks(false))
 		l.mu.Unlock()
 		timeoutFlush(10 * time.Second)
 		os.Exit(255) // C++ uses -1, which is silly because it's anded with 255 anyway.
@@ -799,86 +691,6 @@ func (l *loggingT) exit(err error) {
 	os.Exit(2)
 }
 
-// syncBuffer joins a bufio.Writer to its underlying file, providing access to the
-// file's Sync method and providing a wrapper for the Write method that provides log
-// file rotation. There are conflicting methods, so the file cannot be embedded.
-// l.mu is held for all its methods.
-type syncBuffer struct {
-	logger *loggingT
-	*bufio.Writer
-	file   *os.File
-	sev    severity
-	nbytes uint64 // The number of bytes written to this file
-}
-
-func (sb *syncBuffer) Sync() error {
-	return sb.file.Sync()
-}
-
-func (sb *syncBuffer) Write(p []byte) (n int, err error) {
-	if sb.nbytes+uint64(len(p)) >= MaxSize {
-		if err := sb.rotateFile(time.Now()); err != nil {
-			sb.logger.exit(err)
-		}
-	}
-	n, err = sb.Writer.Write(p)
-	sb.nbytes += uint64(n)
-	if err != nil {
-		sb.logger.exit(err)
-	}
-	return
-}
-
-// rotateFile closes the syncBuffer's file and starts a new one.
-func (sb *syncBuffer) rotateFile(now time.Time) error {
-	if sb.file != nil {
-		sb.Flush()
-		sb.file.Close()
-	}
-	var err error
-	sb.file, _, err = create(severityName[sb.sev], now)
-	sb.nbytes = 0
-	if err != nil {
-		return err
-	}
-
-	sb.Writer = bufio.NewWriterSize(sb.file, bufferSize)
-
-	// Write header.
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "Log file created at: %s\n", now.Format("2006/01/02 15:04:05"))
-	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
-	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	fmt.Fprintf(&buf, "Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg\n")
-	n, err := sb.file.Write(buf.Bytes())
-	sb.nbytes += uint64(n)
-	return err
-}
-
-// bufferSize sizes the buffer associated with each log file. It's large
-// so that log records can accumulate without the logging thread blocking
-// on disk I/O. The flushDaemon will block instead.
-const bufferSize = 256 * 1024
-
-// createFiles creates all the log files for severity from sev down to infoLog.
-// l.mu is held.
-func (l *loggingT) createFiles(sev severity) error {
-	now := time.Now()
-	// Files are created in decreasing severity order, so as soon as we find one
-	// has already been created, we can stop.
-	for s := sev; s >= infoLog && l.file[s] == nil; s-- {
-		sb := &syncBuffer{
-			logger: l,
-			sev:    s,
-		}
-		if err := sb.rotateFile(now); err != nil {
-			return err
-		}
-		l.file[s] = sb
-	}
-	return nil
-}
-
 const flushInterval = 30 * time.Second
 
 // flushDaemon periodically flushes the log file buffers.
@@ -898,14 +710,7 @@ func (l *loggingT) lockAndFlushAll() {
 // flushAll flushes all the logs and attempts to "sync" their data to disk.
 // l.mu is held.
 func (l *loggingT) flushAll() {
-	// Flush from fatal down, in case there's trouble flushing.
-	for s := fatalLog; s >= infoLog; s-- {
-		file := l.file[s]
-		if file != nil {
-			file.Flush() // ignore error
-			file.Sync()  // ignore error
-		}
-	}
+	Output.Flush()
 }
 
 // setV computes and remembers the V level for a given PC
