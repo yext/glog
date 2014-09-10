@@ -65,6 +65,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -342,6 +343,9 @@ func init() {
 	flag.Var(&logging.verbosity, "v", "log level for V logs")
 	flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
 	flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
+
+	log.SetOutput(Output)
+	log.SetFlags(0)
 
 	logging.setVState(0, nil, false)
 	go logging.flushDaemon()
