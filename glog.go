@@ -880,6 +880,20 @@ func Warning(args ...interface{}) {
 	logging.print(warningLog, args...)
 }
 
+// WarningIf logs to the WARNING, and INFO logs.
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func WarningIf(err error, args ...interface{}) {
+	if err != nil {
+		if args != nil {
+			errStr := ": " + err.Error()
+			args = append(args, errStr)
+			logging.print(warningLog, args...)
+		} else {
+			logging.print(warningLog, err)
+		}
+	}
+}
+
 // WarningWithDepth is equivalent to Warning but with a specified extra depth (on the call stack).
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func WarningWithDepth(extraDepth int, args ...interface{}) {
@@ -904,6 +918,16 @@ func Warningf(format string, args ...interface{}) {
 	logging.printf(warningLog, format, args...)
 }
 
+// WarningfIf logs to the WARNING, and INFO logs.
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func WarningfIf(err error, format string, args ...interface{}) {
+	if err != nil {
+		format += ": %v"
+		args = append(args, err)
+		logging.printf(warningLog, format, args...)
+	}
+}
+
 // WarningfWithDepth is equivalent to Warningf but with a specified extra depth (on the call stack).
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func WarningfWithDepth(extraDepth int, format string, args ...interface{}) {
@@ -914,6 +938,20 @@ func WarningfWithDepth(extraDepth int, format string, args ...interface{}) {
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Error(args ...interface{}) {
 	logging.print(errorLog, args...)
+}
+
+// ErrorIf logs to the ERROR, WARNING, and INFO logs.
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func ErrorIf(err error, args ...interface{}) {
+	if err != nil {
+		if args != nil {
+			errStr := ": " + err.Error()
+			args = append(args, errStr)
+			logging.print(errorLog, args...)
+		} else {
+			logging.print(errorLog, err)
+		}
+	}
 }
 
 // ErrorWithDepth is equivalent to Error but with a specified extra depth (on the call stack).
@@ -938,6 +976,16 @@ func ErrorlnWithDepth(extraDepth int, args ...interface{}) {
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Errorf(format string, args ...interface{}) {
 	logging.printf(errorLog, format, args...)
+}
+
+// ErrorfIf logs to the ERROR, WARNING, and INFO logs.
+// Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
+func ErrorfIf(err error, format string, args ...interface{}) {
+	if err != nil {
+		format += ": %v"
+		args = append(args, err)
+		logging.printf(errorLog, format, args...)
+	}
 }
 
 // ErrorfWithDepth is equivalent to Errorf but with a specified extra depth (on the call stack).
