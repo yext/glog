@@ -81,12 +81,21 @@ type Writer interface {
 	Flush()
 }
 
-var Output Writer = fileWriter{os.Stdout}
+var output Writer = fileWriter{os.Stdout}
 
 type fileWriter struct{ *os.File }
 
 func (wr fileWriter) Flush() {
 	wr.File.Sync()
+}
+
+// This ExternalOutput is to be used only for external logs
+var ExternalOutput externalWriter
+
+type externalWriter struct{}
+
+func (er externalWriter) Write(b []byte) (n int, err error) {
+	return logging.printWithDepth(infoLog, 3, string(b)), nil
 }
 
 // severity identifies the sort of log: info, warning etc. It also implements
@@ -344,7 +353,7 @@ func init() {
 	flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
 	flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
 
-	log.SetOutput(Output)
+	log.SetOutput(ExternalOutput)
 	log.SetFlags(0)
 
 	logging.setVState(0, nil, false)
@@ -566,11 +575,11 @@ func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interfac
 	eventForBackends(e)
 }
 
-func (l *loggingT) print(s severity, args ...interface{}) {
-	l.printWithDepth(s, 1, args...)
+func (l *loggingT) print(s severity, args ...interface{}) int {
+	return l.printWithDepth(s, 1, args...)
 }
 
-func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{}) {
+func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{}) int {
 	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
 	fmt.Fprint(buf, args...)
@@ -582,10 +591,11 @@ func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
-	l.outputWithDepth(s, buf, extraDepth)
+	n := l.outputWithDepth(s, buf, extraDepth)
 
 	e := NewEvent(s, message, dataArgs, extraDepth)
 	eventForBackends(e)
+	return n
 }
 
 func (l *loggingT) printf(s severity, format string, args ...interface{}) {
@@ -615,7 +625,7 @@ func (l *loggingT) output(s severity, buf *buffer) {
 	l.outputWithDepth(s, buf, 1)
 }
 
-func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) {
+func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) int {
 	l.mu.Lock()
 	if l.traceLocation.isSet() {
 		_, file, line, ok := runtime.Caller(3 + extraDepth)
@@ -624,9 +634,9 @@ func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) {
 		}
 	}
 	data := buf.Bytes()
-	Output.Write(data)
+	n, _ := output.Write(data)
 	if s == fatalLog {
-		Output.Write(stacks(false))
+		output.Write(stacks(false))
 		l.mu.Unlock()
 		timeoutFlush(10 * time.Second)
 		os.Exit(255) // C++ uses -1, which is silly because it's anded with 255 anyway.
@@ -637,6 +647,7 @@ func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) {
 		atomic.AddInt64(&stats.lines, 1)
 		atomic.AddInt64(&stats.bytes, int64(len(data)))
 	}
+	return n
 }
 
 // timeoutFlush calls Flush and returns when it completes or after timeout
@@ -714,7 +725,7 @@ func (l *loggingT) lockAndFlushAll() {
 // flushAll flushes all the logs and attempts to "sync" their data to disk.
 // l.mu is held.
 func (l *loggingT) flushAll() {
-	Output.Flush()
+	output.Flush()
 }
 
 // setV computes and remembers the V level for a given PC
