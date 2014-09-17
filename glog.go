@@ -1012,6 +1012,21 @@ func Fatal(args ...interface{}) {
 	logging.print(fatalLog, args...)
 }
 
+// FatalIf logs to the FATAL, ERROR, WARNING, and INFO,
+// including a stack trace of all running goroutines, then calls os.Exit(255).
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func FatalIf(err error, args ...interface{}) {
+	if err != nil {
+		if args != nil {
+			errStr := ": " + err.Error()
+			args = append(args, errStr)
+			logging.print(fatalLog, args...)
+		} else {
+			logging.print(fatalLog, err)
+		}
+	}
+}
+
 // FatalWithDepth is equivalent to Fatal but with a specified extra depth (on the call stack).
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func FatalWithDepth(extraDepth int, args ...interface{}) {
