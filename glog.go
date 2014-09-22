@@ -74,6 +74,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/yext/errgo"
 )
 
 type Writer interface {
@@ -556,6 +558,19 @@ func (buf *buffer) someDigits(i, d int) int {
 	return copy(buf.tmp[i:], buf.tmp[j:])
 }
 
+func getStackFrames(args []interface{}) []uintptr {
+	var frames []uintptr
+	for _, arg := range args {
+		switch e := arg.(type) {
+		case error:
+			return errgo.StackFrameInfo(e)
+		default:
+			// ignore
+		}
+	}
+	return frames
+}
+
 func (l *loggingT) println(s severity, args ...interface{}) {
 	l.printlnWithDepth(s, 1, args)
 }
@@ -569,9 +584,10 @@ func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interfac
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
+	frames := getStackFrames(args)
 	l.outputWithDepth(s, buf, extraDepth)
 
-	e := NewEvent(s, message, dataArgs, extraDepth)
+	e := NewEvent(s, message, dataArgs, extraDepth, frames)
 	eventForBackends(e)
 }
 
@@ -588,12 +604,13 @@ func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
+	frames := getStackFrames(args)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	n := l.outputWithDepth(s, buf, extraDepth)
 
-	e := NewEvent(s, message, dataArgs, extraDepth)
+	e := NewEvent(s, message, dataArgs, extraDepth, frames)
 	eventForBackends(e)
 	return n
 }
@@ -611,12 +628,13 @@ func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, ar
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
+	frames := getStackFrames(args)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	l.outputWithDepth(s, buf, extraDepth)
 
-	e := NewEvent(s, message, dataArgs, extraDepth)
+	e := NewEvent(s, message, dataArgs, extraDepth, frames)
 	eventForBackends(e)
 }
 
