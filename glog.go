@@ -558,14 +558,13 @@ func (buf *buffer) someDigits(i, d int) int {
 	return copy(buf.tmp[i:], buf.tmp[j:])
 }
 
-func getStackFrames(args []interface{}) []uintptr {
-	var frames []uintptr
+func getStackFrames(args []interface{}) (string, []uintptr) {
 	for _, arg := range args {
 		if err, ok := arg.(error); ok {
-			return errgo.StackFrameInfo(err)
+			return errgo.Details(err) + "\n", errgo.StackFrameInfo(err)
 		}
 	}
-	return frames
+	return "", nil
 }
 
 func (l *loggingT) println(s severity, args ...interface{}) {
@@ -581,8 +580,8 @@ func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interfac
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
-	frames := getStackFrames(args)
-	l.outputWithDepth(s, buf, extraDepth)
+	details, frames := getStackFrames(args)
+	l.outputWithDepth(s, buf, extraDepth, details)
 
 	e := NewEvent(s, message, dataArgs, extraDepth, frames)
 	eventForBackends(e)
@@ -601,11 +600,11 @@ func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
-	frames := getStackFrames(args)
+	details, frames := getStackFrames(args)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
-	n := l.outputWithDepth(s, buf, extraDepth)
+	n := l.outputWithDepth(s, buf, extraDepth, details)
 
 	e := NewEvent(s, message, dataArgs, extraDepth, frames)
 	eventForBackends(e)
@@ -625,11 +624,11 @@ func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, ar
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
-	frames := getStackFrames(args)
+	details, frames := getStackFrames(args)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
-	l.outputWithDepth(s, buf, extraDepth)
+	l.outputWithDepth(s, buf, extraDepth, details)
 
 	e := NewEvent(s, message, dataArgs, extraDepth, frames)
 	eventForBackends(e)
@@ -637,10 +636,10 @@ func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, ar
 
 // output writes the data to the log files and releases the buffer.
 func (l *loggingT) output(s severity, buf *buffer) {
-	l.outputWithDepth(s, buf, 1)
+	l.outputWithDepth(s, buf, 1, "")
 }
 
-func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) int {
+func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int, details string) int {
 	l.mu.Lock()
 	if l.traceLocation.isSet() {
 		_, file, line, ok := runtime.Caller(3 + extraDepth)
@@ -648,6 +647,7 @@ func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) int 
 			buf.Write(stacks(false))
 		}
 	}
+	fmt.Fprint(buf, details)
 	data := buf.Bytes()
 	n, _ := output.Write(data)
 	if s == fatalLog {
@@ -971,12 +971,10 @@ func Error(args ...interface{}) {
 func ErrorIf(err error, args ...interface{}) {
 	if err != nil {
 		if args != nil {
-			errStr := ": " + err.Error()
-			args = append(args, errStr)
-			logging.print(errorLog, args...)
-		} else {
-			logging.print(errorLog, err)
+			args = append(args, ": ")
 		}
+		args = append(args, err)
+		logging.print(errorLog, args...)
 	}
 }
 
