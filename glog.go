@@ -561,11 +561,8 @@ func (buf *buffer) someDigits(i, d int) int {
 func getStackFrames(args []interface{}) []uintptr {
 	var frames []uintptr
 	for _, arg := range args {
-		switch e := arg.(type) {
-		case error:
-			return errgo.StackFrameInfo(e)
-		default:
-			// ignore
+		if err, ok := arg.(error); ok {
+			return errgo.StackFrameInfo(err)
 		}
 	}
 	return frames
