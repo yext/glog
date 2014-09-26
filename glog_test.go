@@ -33,7 +33,7 @@ type bufWriter struct{ *bytes.Buffer }
 func (bufWriter) Flush() {}
 
 func setBuffer() *bytes.Buffer {
-	Output = bufWriter{&fakeStdout}
+	output = bufWriter{&fakeStdout}
 	return &fakeStdout
 }
 

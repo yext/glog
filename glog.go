@@ -568,7 +568,7 @@ func getStackFrames(args []interface{}) (string, []uintptr) {
 }
 
 func (l *loggingT) println(s severity, args ...interface{}) {
-	l.printlnWithDepth(s, 1, args)
+	l.printlnWithDepth(s, 1, args...)
 }
 
 func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interface{}) {
