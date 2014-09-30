@@ -558,10 +558,38 @@ func (buf *buffer) someDigits(i, d int) int {
 	return copy(buf.tmp[i:], buf.tmp[j:])
 }
 
+func formatErrorStack(err error) string {
+	var s []byte
+	if err == nil {
+		return ""
+	}
+	for {
+		s = append(s, '\t')
+		if err, ok := err.(errgo.Locationer); ok {
+			loc := err.Location()
+			if loc.IsSet() {
+				s = append(s, loc.String()...)
+				s = append(s, ": "...)
+			}
+		}
+		if cerr, ok := err.(errgo.Wrapper); ok {
+			s = append(s, cerr.Message()...)
+			err = cerr.Underlying()
+		} else {
+			s = append(s, err.Error()...)
+			err = nil
+		}
+		s = append(s, '\n')
+		if err == nil {
+			return string(s)
+		}
+	}
+}
+
 func getStackFrames(args []interface{}) (string, []uintptr) {
 	for _, arg := range args {
 		if err, ok := arg.(error); ok {
-			return errgo.Details(err) + "\n", errgo.StackFrameInfo(err)
+			return formatErrorStack(err), errgo.StackFrameInfo(err)
 		}
 	}
 	return "", nil
