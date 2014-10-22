@@ -611,7 +611,7 @@ func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interfac
 	details, frames := getStackFrames(args)
 	l.outputWithDepth(s, buf, extraDepth, details)
 
-	e := NewEvent(s, message, dataArgs, extraDepth, frames)
+	e := NewEvent(s, mess, dataArgs, extraDepth, frames)
 	eventForBackends(e)
 }
 
@@ -634,7 +634,7 @@ func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{
 	}
 	n := l.outputWithDepth(s, buf, extraDepth, details)
 
-	e := NewEvent(s, message, dataArgs, extraDepth, frames)
+	e := NewEvent(s, mess, dataArgs, extraDepth, frames)
 	eventForBackends(e)
 	return n
 }
@@ -658,7 +658,7 @@ func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, ar
 	}
 	l.outputWithDepth(s, buf, extraDepth, details)
 
-	e := NewEvent(s, message, dataArgs, extraDepth, frames)
+	e := NewEvent(s, mess, dataArgs, extraDepth, frames)
 	eventForBackends(e)
 }
 
