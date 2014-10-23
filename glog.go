@@ -563,18 +563,24 @@ func formatErrorStack(err error) string {
 	if err == nil {
 		return ""
 	}
+
 	for {
 		s = append(s, '\t')
 		if err, ok := err.(errgo.Locationer); ok {
 			loc := err.Location()
 			if loc.IsSet() {
 				s = append(s, loc.String()...)
-				s = append(s, ": "...)
+				s = append(s, " "...)
 			}
 		}
-		if cerr, ok := err.(errgo.Wrapper); ok {
-			s = append(s, cerr.Message()...)
-			err = cerr.Underlying()
+		if werr, ok := err.(errgo.Wrapper); ok {
+			s = append(s, werr.Message()...)
+			if cerr, ok := err.(errgo.Causer); ok && cerr.Cause() != nil {
+				s = append(s, " ("...)
+				s = append(s, cerr.Cause().Error()...)
+				s = append(s, ')')
+			}
+			err = werr.Underlying()
 		} else {
 			s = append(s, err.Error()...)
 			err = nil
