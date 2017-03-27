@@ -605,6 +605,23 @@ func (l *loggingT) println(s severity, args ...interface{}) {
 	l.printlnWithDepth(s, 1, args...)
 }
 
+// getEvent exists to give some extra flexiblity to glog-compatible add-ons
+// (github.com/glog-contrib/) to handle their errors.  Now users can call
+// add-on.logEvent(glog.GetErrorEvent(err)) instead of relying on RegisterBackend
+func (l *loggingT) getEvent(s severity, args ...interface{}) Event {
+	args, dataArgs := filterData(args)
+	buf := l.headerWithDepth(s, 1)
+	fmt.Fprintln(buf, args...)
+
+	message := buf.Bytes()
+	mess := make([]byte, len(message))
+	copy(mess, message)
+
+	_, frames := getStackFrames(args)
+
+	return NewEvent(s, mess, dataArgs, 1, frames)
+}
+
 func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interface{}) {
 	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
@@ -998,6 +1015,11 @@ func WarningfWithDepth(extraDepth int, format string, args ...interface{}) {
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Error(args ...interface{}) {
 	logging.print(errorLog, args...)
+}
+
+// GetErrorEvent returns an ERROR level Event of args
+func GetErrorEvent(args ...interface{}) Event {
+	return logging.getEvent(errorLog, args)
 }
 
 // ErrorIf logs to the ERROR, WARNING, and INFO logs.
