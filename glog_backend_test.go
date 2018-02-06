@@ -71,10 +71,19 @@ func TestIgnoreData(t *testing.T) {
 	defer resetOutput(setBuffer())
 
 	comm := RegisterBackend()
+	done := make(chan struct{})
 	go func() {
-		for e := range comm {
-			if !strings.Contains(fmt.Sprintf("%v", e), "content to ignore") {
-				t.Error("backend did not received expected data")
+		for {
+			select {
+			case e, open := <-comm:
+				if !open {
+					return
+				}
+				if !strings.Contains(fmt.Sprintf("%v", e), "content to ignore") {
+					t.Error("backend did not received expected data")
+				}
+			case <-done:
+				return
 			}
 		}
 	}()
@@ -88,6 +97,8 @@ func TestIgnoreData(t *testing.T) {
 	if !contains("interesting content", t) {
 		t.Error("glog ignored content it was not supposed to")
 	}
+
+	close(done)
 }
 
 func BenchmarkError(b *testing.B) {
