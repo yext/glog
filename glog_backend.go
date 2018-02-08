@@ -1,6 +1,8 @@
 package glog
 
-import "runtime"
+import (
+	"runtime"
+)
 
 var (
 	messageChan  = make(chan Event, 10)
@@ -87,6 +89,14 @@ func RegisterBackend() <-chan Event {
 	c := make(chan Event, 100)
 	backendChans = append(backendChans, c)
 	return c
+}
+
+// clearBackends gets rid of all backends
+func clearBackends() {
+	for _, b := range backendChans {
+		close(b)
+	}
+	backendChans = nil
 }
 
 // eventForBackends creates and writes a glog.Event to the message channel

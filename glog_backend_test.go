@@ -69,6 +69,7 @@ func TestBackends(t *testing.T) {
 
 func TestIgnoreData(t *testing.T) {
 	defer resetOutput(setBuffer())
+	clearBackends()
 
 	comm := RegisterBackend()
 	done := make(chan struct{})
