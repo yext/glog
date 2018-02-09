@@ -4,10 +4,6 @@ import "context"
 
 type contextKey string
 
-func (c contextKey) String() string {
-	return "github.com/yext/glog/" + string(c)
-}
-
 var (
 	contextKeyData   = contextKey("data")
 	contextKeyPrefix = contextKey("prefix")
