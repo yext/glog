@@ -50,113 +50,113 @@ func TestContextPrefix(t *testing.T) {
 
 var loggerTests = []struct {
 	name        string
-	loggingFunc func(l Logger)
+	loggingFunc func(l *Logger)
 }{
 	{
 		name: "Info",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Info("hello")
 		},
 	},
 	{
 		name: "Infoln",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Infoln("hello")
 		},
 	},
 	{
 		name: "Infof",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Infof("hello: %s", "<NAME>")
 		},
 	},
 	{
 		name: "InfoWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.InfoWithDepth(1, "hello")
 		},
 	},
 	{
 		name: "InfolnWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.InfolnWithDepth(1, "hello")
 		},
 	},
 	{
 		name: "InfofWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.InfofWithDepth(1, "hello: %s", "<NAME>")
 		},
 	},
 	{
 		name: "Warning",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Warning("hello")
 		},
 	},
 	{
 		name: "Warningln",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Warningln("hello")
 		},
 	},
 	{
 		name: "Warningf",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Warningf("hello: %s", "<NAME>")
 		},
 	},
 	{
 		name: "WarningWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.WarningWithDepth(1, "hello")
 		},
 	},
 	{
 		name: "WarninglnWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.WarninglnWithDepth(1, "hello")
 		},
 	},
 	{
 		name: "WarningfWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.WarningfWithDepth(1, "hello: %s", "<NAME>")
 		},
 	},
 	{
 		name: "Error",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Error("hello")
 		},
 	},
 	{
 		name: "Errorln",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Errorln("hello")
 		},
 	},
 	{
 		name: "Errorf",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.Errorf("hello: %s", "<NAME>")
 		},
 	},
 	{
 		name: "ErrorWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.ErrorWithDepth(1, "hello")
 		},
 	},
 	{
 		name: "ErrorlnWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.ErrorlnWithDepth(1, "hello")
 		},
 	},
 	{
 		name: "ErrorfWithDepth",
-		loggingFunc: func(l Logger) {
+		loggingFunc: func(l *Logger) {
 			l.ErrorfWithDepth(1, "hello: %s", "<NAME>")
 		},
 	},
