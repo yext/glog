@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+// clearBackends gets rid of all backends
+func clearBackends() {
+	for _, b := range backendChans {
+		close(b)
+	}
+	backendChans = nil
+}
+
 type testBackend struct {
 	letString string
 	write     func(Event)

@@ -91,14 +91,6 @@ func RegisterBackend() <-chan Event {
 	return c
 }
 
-// clearBackends gets rid of all backends
-func clearBackends() {
-	for _, b := range backendChans {
-		close(b)
-	}
-	backendChans = nil
-}
-
 // eventForBackends creates and writes a glog.Event to the message channel
 // if and only if we have registered backends.
 func eventForBackends(e Event) {
