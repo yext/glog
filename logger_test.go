@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -167,4 +168,24 @@ func TestAppendData(t *testing.T) {
 	}
 
 	waitForData(t, comm, message, "data1", "data2")
+}
+
+func TestDataAppendLookback(t *testing.T) {
+	log := NewLogger()
+	log2 := log.AppendData("starting")
+	tick := make(chan int)
+	go func() {
+		for i := range tick {
+			log2 = log2.AppendData(fmt.Sprintf("iteration %v", i))
+			t.Log(log2.data)
+			if strings.Contains(fmt.Sprintf("%v", log2.data), "waiting") {
+				t.Error("Data appended to the root should not have been added to leaf loggers")
+			}
+		}
+	}()
+	for i := 0; i < 10; i++ {
+		tick <- i
+		log = log.AppendData("waiting")
+		t.Log(log.data)
+	}
 }

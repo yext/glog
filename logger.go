@@ -71,11 +71,9 @@ func (l *Logger) WithData(vars ...interface{}) *Logger {
 // AppendData creates a Logger from an existing logger,
 // appending the provided data to the data in the existing logger.
 func (l *Logger) AppendData(vars ...interface{}) *Logger {
-	newData := make([]interface{}, len(l.data))
-	copy(newData, l.data)
 	return &Logger{
 		loggingT: l.loggingT,
-		data:     append(newData, vars...),
+		data:     append(l.data, vars...),
 		prefix:   l.prefix,
 	}
 }
