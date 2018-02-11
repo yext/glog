@@ -4,7 +4,7 @@ import "context"
 
 type contextKey string
 
-var (
+const (
 	contextKeyData   = contextKey("data")
 	contextKeyPrefix = contextKey("prefix")
 )
