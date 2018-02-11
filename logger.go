@@ -75,7 +75,7 @@ func (l *Logger) AppendData(vars ...interface{}) *Logger {
 	copy(newData, l.data)
 	return &Logger{
 		loggingT: l.loggingT,
-		data:     append(newData, vars),
+		data:     append(newData, vars...),
 		prefix:   l.prefix,
 	}
 }
@@ -117,7 +117,7 @@ func (l *Logger) Error(args ...interface{}) {
 
 // GetErrorEvent is equivalent to the global GetErrorEvent function, with the addition of prefix and data content from this Logger.
 func (l *Logger) GetErrorEvent(args ...interface{}) Event {
-	return l.getEvent(errorLog, l.extendWithPfx(args))
+	return l.getEvent(errorLog, l.extendWithPfx(args)...)
 }
 
 // ErrorIf is equivalent to the global ErrorIf function, with the addition of prefix and data content from this Logger.
@@ -163,7 +163,9 @@ func (l *Logger) FatalIf(err error, args ...interface{}) {
 			args = append(args, errStr)
 			l.print(fatalLog, l.extendWithPfx(args)...)
 		} else {
-			l.print(fatalLog, l.extendWithPfx([]interface{}{err}))
+			l.print(fatalLog, l.extendWithPfx([]interface{}{
+				err,
+			})...)
 		}
 	}
 }

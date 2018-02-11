@@ -5,15 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
-
-// clearBackends gets rid of all backends
-func clearBackends() {
-	for _, b := range backendChans {
-		close(b)
-	}
-	backendChans = nil
-}
 
 type testBackend struct {
 	letString string
@@ -77,37 +70,50 @@ func TestBackends(t *testing.T) {
 
 func TestIgnoreData(t *testing.T) {
 	defer resetOutput(setBuffer())
-	clearBackends()
 
 	comm := RegisterBackend()
-	done := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case e, open := <-comm:
-				if !open {
-					return
-				}
-				if !strings.Contains(fmt.Sprintf("%v", e), "content to ignore") {
-					t.Error("backend did not received expected data")
-				}
-			case <-done:
-				return
-			}
-		}
-	}()
 
-	Error("interesting content", Data("content to ignore"))
+	message := fmt.Sprintf("testIgnoreData message: %v", time.Now().Nanosecond())
+	Error(message, Data("data1"))
 
-	if contains("content to ignore", t) {
+	if contains("data1", t) {
 		t.Error("glog did not ignore data which it was told to ignore")
 	}
 
-	if !contains("interesting content", t) {
+	if !contains(message, t) {
 		t.Error("glog ignored content it was not supposed to")
 	}
 
-	close(done)
+	waitForData(t, comm, message, "data1")
+}
+
+func waitForData(t *testing.T, comm <-chan Event, expectedMessage string, expectedData ...interface{}) {
+	timeout := time.After(1 * time.Second)
+	for {
+		select {
+		case e, open := <-comm:
+			if !open {
+				t.Error("Backend closed without receiving expected message")
+				return
+			}
+			if strings.Contains(string(e.Message), expectedMessage) {
+				set := make(map[interface{}]struct{})
+				for _, d := range e.Data {
+					t.Log(d)
+					set[d] = struct{}{}
+				}
+				for _, d := range expectedData {
+					if _, ok := set[d]; !ok {
+						t.Error("Expected data not received in message: ", d)
+					}
+				}
+				return
+			}
+		case <-timeout:
+			t.Error("Timed out waiting for data on backend")
+			return
+		}
+	}
 }
 
 func BenchmarkError(b *testing.B) {

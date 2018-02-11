@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
+	"time"
 )
 
 func TestPrefix(t *testing.T) {
@@ -123,66 +123,48 @@ var loggerTests = []struct {
 
 func TestLogData(t *testing.T) {
 	defer resetOutput(setBuffer())
-	clearBackends()
 
 	comm := RegisterBackend()
-	done := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case e, open := <-comm:
-				if !open {
-					return
-				}
-				if !strings.Contains(fmt.Sprintf("%v", e), "content to ignore") {
-					t.Error("backend did not received expected data")
-				}
-			case <-done:
-				return
-			}
-		}
-	}()
+	message1 := fmt.Sprintf("testLogData message: %v", time.Now().Nanosecond())
 
-	logger := WithData("content to ignore")
-	logger.Error("interesting content")
+	logger := WithData("data1")
+	logger.Error(message1)
+
+	waitForData(t, comm, message1, "data1")
+
+	message2 := fmt.Sprintf("testLogData message2: %v", time.Now().Nanosecond())
 
 	logger = NewLogger()
-	logger = logger.WithData("content to ignore")
-	logger.Error("extra content")
+	logger = logger.WithData("data2")
+	logger.Error(message2)
 
-	if contains("content to ignore", t) {
+	if contains("data1", t) || contains("data2", t) {
 		t.Error("glog did not ignore data which it was told to ignore")
 	}
-	if !contains("interesting content", t) {
-		t.Error("glog ignored content it was not supposed to")
-	}
-	if !contains("extra content", t) {
+	if !contains(message1, t) || !contains(message2, t) {
 		t.Error("glog ignored content it was not supposed to")
 	}
 
-	close(done)
+	waitForData(t, comm, message2, "data2")
 }
 
 func TestAppendData(t *testing.T) {
-	clearBackends()
 	defer resetOutput(setBuffer())
 
 	comm := RegisterBackend()
 
 	logger := WithData("data1")
 	logger = logger.AppendData("data2")
-	logger.Error("message")
-
-	e := <-comm
-	d := fmt.Sprintf("%v", e)
-	if !strings.Contains(d, "data1") && !strings.Contains(d, "data2") {
-		t.Error("backend did not received expected data")
-	}
+	message := fmt.Sprintf("testAppendData message: %v", time.Now().Nanosecond())
+	logger.Error(message)
 
 	if contains("data1", t) || contains("data2", t) {
 		t.Error("glog did not ignore data which it was told to ignore")
 	}
-	if !contains("message", t) {
+
+	if !contains(message, t) {
 		t.Error("glog ignored content it was not supposed to")
 	}
+
+	waitForData(t, comm, message, "data1", "data2")
 }
