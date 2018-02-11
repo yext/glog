@@ -2,6 +2,7 @@ package glog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -131,6 +132,12 @@ var loggerTests = []struct {
 		},
 	},
 	{
+		name: "ErrorIf",
+		loggingFunc: func(l *Logger) {
+			l.ErrorIf(errors.New("error"))
+		},
+	},
+	{
 		name: "Errorln",
 		loggingFunc: func(l *Logger) {
 			l.Errorln("hello")
@@ -140,6 +147,12 @@ var loggerTests = []struct {
 		name: "Errorf",
 		loggingFunc: func(l *Logger) {
 			l.Errorf("hello: %s", "<NAME>")
+		},
+	},
+	{
+		name: "ErrorfIf",
+		loggingFunc: func(l *Logger) {
+			l.ErrorfIf(errors.New("error"), "hello: %s", "<NAME>")
 		},
 	},
 	{

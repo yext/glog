@@ -51,9 +51,6 @@ func WithData(args ...interface{}) *Logger {
 // WithPrefix creates a Logger from an existing logger with a specified prefix.
 // Any prefix on the input Logger will be replaced.
 func (l *Logger) WithPrefix(prefix string) *Logger {
-	if l == nil {
-		return nil
-	}
 	return &Logger{
 		loggingT: l.loggingT,
 		data:     l.data,
@@ -64,12 +61,19 @@ func (l *Logger) WithPrefix(prefix string) *Logger {
 // WithData creates a Logger from an existing logger, using the specifed data.
 // Any existing data on the input Logger will be replaced.
 func (l *Logger) WithData(vars ...interface{}) *Logger {
-	if l == nil {
-		return nil
-	}
 	return &Logger{
 		loggingT: l.loggingT,
 		data:     vars,
+		prefix:   l.prefix,
+	}
+}
+
+// AppendData creates a Logger from an existing logger,
+// appending the provided data to the data in the existing logger.
+func (l *Logger) AppendData(vars ...interface{}) *Logger {
+	return &Logger{
+		loggingT: l.loggingT,
+		data:     append(l.data, vars),
 		prefix:   l.prefix,
 	}
 }
@@ -139,6 +143,22 @@ func (l *Logger) Error(args ...interface{}) {
 	l.print(errorLog, l.extendWithPfx(args)...)
 }
 
+// GetErrorEvent is equivalent to the global GetErrorEvent function, with the addition of prefix and data content from this Logger.
+func (l *Logger) GetErrorEvent(args ...interface{}) Event {
+	return l.getEvent(errorLog, l.extendWithPfx(args))
+}
+
+// ErrorIf is equivalent to the global ErrorIf function, with the addition of prefix and data content from this Logger.
+func (l *Logger) ErrorIf(err error, args ...interface{}) {
+	if err != nil {
+		if args != nil {
+			args = append(args, ": ")
+		}
+		args = append(args, err)
+		l.print(errorLog, l.extendWithPfx(args)...)
+	}
+}
+
 // ErrorWithDepth is equivalent to the global ErrorWithDepth function, with the addition of prefix and data content from this Logger.
 func (l *Logger) ErrorWithDepth(extraDepth int, args ...interface{}) {
 	l.printWithDepth(errorLog, extraDepth, l.extendWithPfx(args)...)
@@ -157,6 +177,15 @@ func (l *Logger) ErrorlnWithDepth(extraDepth int, args ...interface{}) {
 // Errorf is equivalent to the global Errorf function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Errorf(format string, args ...interface{}) {
 	l.printf(errorLog, l.pfx(format), l.extend(args)...)
+}
+
+// ErrorfIf is equivalent to the global ErrorfIf function, with the addition of prefix and data content from this Logger.
+func (l *Logger) ErrorfIf(err error, format string, args ...interface{}) {
+	if err != nil {
+		format += ": %v"
+		args = append(args, err)
+		l.printf(errorLog, l.pfx(format), l.extend(args)...)
+	}
 }
 
 // ErrorfWithDepth is equivalent to the global ErrorfWithDepth function, with the addition of prefix and data content from this Logger.
