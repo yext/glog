@@ -216,3 +216,27 @@ func TestLogData(t *testing.T) {
 
 	close(done)
 }
+
+func TestAppendData(t *testing.T) {
+	clearBackends()
+	defer resetOutput(setBuffer())
+
+	comm := RegisterBackend()
+
+	logger := WithData("data1")
+	logger = logger.AppendData("data2")
+	logger.Error("message")
+
+	e := <-comm
+	d := fmt.Sprintf("%v", e)
+	if !strings.Contains(d, "data1") && !strings.Contains(d, "data2") {
+		t.Error("backend did not received expected data")
+	}
+
+	if contains("data1", t) || contains("data2", t) {
+		t.Error("glog did not ignore data which it was told to ignore")
+	}
+	if !contains("message", t) {
+		t.Error("glog ignored content it was not supposed to")
+	}
+}
