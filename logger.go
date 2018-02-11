@@ -83,19 +83,9 @@ func (l *Logger) Info(args ...interface{}) {
 	l.print(infoLog, l.extendWithPfx(args)...)
 }
 
-// InfoWithDepth is equivalent to the global InfoWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) InfoWithDepth(extraDepth int, args ...interface{}) {
-	l.printWithDepth(infoLog, extraDepth, l.extendWithPfx(args)...)
-}
-
 // Infoln is equivalent to the global Infoln function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Infoln(args ...interface{}) {
 	l.println(infoLog, l.extendWithPfx(args)...)
-}
-
-// InfolnWithDepth is equivalent to the global InfolnWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) InfolnWithDepth(extraDepth int, args ...interface{}) {
-	l.printlnWithDepth(infoLog, extraDepth, l.extendWithPfx(args)...)
 }
 
 // Infof is equivalent to the global Infof function, with the addition of prefix and data content from this Logger.
@@ -103,19 +93,9 @@ func (l *Logger) Infof(format string, args ...interface{}) {
 	l.printf(infoLog, l.pfx(format), l.extend(args)...)
 }
 
-// InfofWithDepth is equivalent to the global InfofWithSepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) InfofWithDepth(extraDepth int, format string, args ...interface{}) {
-	l.printfWithDepth(infoLog, extraDepth, l.pfx(format), l.extend(args)...)
-}
-
 // Warning is equivalent to the global Warning function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Warning(args ...interface{}) {
 	l.print(warningLog, l.extendWithPfx(args)...)
-}
-
-// WarningWithDepth is equivalent to the global WarningWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) WarningWithDepth(extraDepth int, args ...interface{}) {
-	l.printWithDepth(warningLog, extraDepth, l.extendWithPfx(args)...)
 }
 
 // Warningln is equivalent to the global Warningln function, with the addition of prefix and data content from this Logger.
@@ -123,19 +103,9 @@ func (l *Logger) Warningln(args ...interface{}) {
 	l.println(warningLog, l.extendWithPfx(args)...)
 }
 
-// WarninglnWithDepth is equivalent to the global WarninglnWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) WarninglnWithDepth(extraDepth int, args ...interface{}) {
-	l.printlnWithDepth(warningLog, extraDepth, l.extendWithPfx(args)...)
-}
-
 // Warningf is equivalent to the global Warningf function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Warningf(format string, args ...interface{}) {
 	l.printf(warningLog, l.pfx(format), l.extend(args)...)
-}
-
-// WarningfWithDepth is equivalent to the global WarningfWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) WarningfWithDepth(extraDepth int, format string, args ...interface{}) {
-	l.printfWithDepth(warningLog, extraDepth, l.pfx(format), l.extend(args)...)
 }
 
 // Error is equivalent to the global Error function, with the addition of prefix and data content from this Logger.
@@ -159,19 +129,9 @@ func (l *Logger) ErrorIf(err error, args ...interface{}) {
 	}
 }
 
-// ErrorWithDepth is equivalent to the global ErrorWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) ErrorWithDepth(extraDepth int, args ...interface{}) {
-	l.printWithDepth(errorLog, extraDepth, l.extendWithPfx(args)...)
-}
-
 // Errorln is equivalent to the global Errorln function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Errorln(args ...interface{}) {
 	l.println(errorLog, l.extendWithPfx(args)...)
-}
-
-// ErrorlnWithDepth is equivalent to the global ErrorlnWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) ErrorlnWithDepth(extraDepth int, args ...interface{}) {
-	l.printlnWithDepth(errorLog, extraDepth, l.extendWithPfx(args)...)
 }
 
 // Errorf is equivalent to the global Errorf function, with the addition of prefix and data content from this Logger.
@@ -188,9 +148,32 @@ func (l *Logger) ErrorfIf(err error, format string, args ...interface{}) {
 	}
 }
 
-// ErrorfWithDepth is equivalent to the global ErrorfWithDepth function, with the addition of prefix and data content from this Logger.
-func (l *Logger) ErrorfWithDepth(extraDepth int, format string, args ...interface{}) {
-	l.printfWithDepth(errorLog, extraDepth, l.pfx(format), l.extend(args)...)
+// Fatal is equivalent to the global Fatal  function, with the addition of prefix and data content from this Logger.
+func (l *Logger) Fatal(args ...interface{}) {
+	l.print(fatalLog, l.extendWithPfx(args)...)
+}
+
+// FatalIf is equivalent to the global FatalIf  function, with the addition of prefix and data content from this Logger.
+func (l *Logger) FatalIf(err error, args ...interface{}) {
+	if err != nil {
+		if args != nil {
+			errStr := ": " + err.Error()
+			args = append(args, errStr)
+			l.print(fatalLog, l.extendWithPfx(args)...)
+		} else {
+			l.print(fatalLog, l.extendWithPfx([]interface{}{err}))
+		}
+	}
+}
+
+// Fatalln is equivalent to the global Fatalln  function, with the addition of prefix and data content from this Logger.
+func (l *Logger) Fatalln(args ...interface{}) {
+	l.println(fatalLog, l.extendWithPfx(args)...)
+}
+
+// Fatalf is equivalent to the global Fatalf  function, with the addition of prefix and data content from this Logger.
+func (l *Logger) Fatalf(format string, args ...interface{}) {
+	l.printf(fatalLog, l.pfx(format), l.extend(args)...)
 }
 
 func (l *Logger) extendWithPfx(args []interface{}) []interface{} {
@@ -204,7 +187,7 @@ func (l *Logger) extendWithPfx(args []interface{}) []interface{} {
 
 func (l *Logger) extend(args []interface{}) []interface{} {
 	for _, d := range l.data {
-		args = append(args, data{d})
+		args = append(args, Data(d))
 	}
 	return args
 }

@@ -72,24 +72,6 @@ var loggerTests = []struct {
 		},
 	},
 	{
-		name: "InfoWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.InfoWithDepth(1, "hello")
-		},
-	},
-	{
-		name: "InfolnWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.InfolnWithDepth(1, "hello")
-		},
-	},
-	{
-		name: "InfofWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.InfofWithDepth(1, "hello: %s", "<NAME>")
-		},
-	},
-	{
 		name: "Warning",
 		loggingFunc: func(l *Logger) {
 			l.Warning("hello")
@@ -105,24 +87,6 @@ var loggerTests = []struct {
 		name: "Warningf",
 		loggingFunc: func(l *Logger) {
 			l.Warningf("hello: %s", "<NAME>")
-		},
-	},
-	{
-		name: "WarningWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.WarningWithDepth(1, "hello")
-		},
-	},
-	{
-		name: "WarninglnWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.WarninglnWithDepth(1, "hello")
-		},
-	},
-	{
-		name: "WarningfWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.WarningfWithDepth(1, "hello: %s", "<NAME>")
 		},
 	},
 	{
@@ -153,24 +117,6 @@ var loggerTests = []struct {
 		name: "ErrorfIf",
 		loggingFunc: func(l *Logger) {
 			l.ErrorfIf(errors.New("error"), "hello: %s", "<NAME>")
-		},
-	},
-	{
-		name: "ErrorWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.ErrorWithDepth(1, "hello")
-		},
-	},
-	{
-		name: "ErrorlnWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.ErrorlnWithDepth(1, "hello")
-		},
-	},
-	{
-		name: "ErrorfWithDepth",
-		loggingFunc: func(l *Logger) {
-			l.ErrorfWithDepth(1, "hello: %s", "<NAME>")
 		},
 	},
 }
