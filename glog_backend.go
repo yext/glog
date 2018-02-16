@@ -1,6 +1,8 @@
 package glog
 
-import "runtime"
+import (
+	"runtime"
+)
 
 var (
 	messageChan  = make(chan Event, 10)
