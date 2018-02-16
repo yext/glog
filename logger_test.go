@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
+
+	must "github.com/theothertomelliott/go-must"
 )
 
 func TestPrefix(t *testing.T) {
@@ -170,22 +171,25 @@ func TestAppendData(t *testing.T) {
 	waitForData(t, comm, message, "data1", "data2")
 }
 
-func TestDataAppendLookback(t *testing.T) {
+func TestMultipleAppends(t *testing.T) {
 	log := NewLogger()
-	log2 := log.AppendData("starting")
-	tick := make(chan int)
-	go func() {
-		for i := range tick {
-			log2 = log2.AppendData(fmt.Sprintf("iteration %v", i))
-			t.Log(log2.data)
-			if strings.Contains(fmt.Sprintf("%v", log2.data), "waiting") {
-				t.Error("Data appended to the root should not have been added to leaf loggers")
-			}
-		}
-	}()
-	for i := 0; i < 10; i++ {
-		tick <- i
-		log = log.AppendData("waiting")
-		t.Log(log.data)
-	}
+	// Initialize slice
+	log1 := log.WithData(1, 2)
+	// Resize
+	log2 := log1.AppendData(3)
+
+	// Append
+	log3 := log2.AppendData(4)
+	log4 := log2.AppendData(5)
+
+	t.Logf("log Len=%d, cap=%d", len(log.data), cap(log.data))
+	t.Logf("log1 Len=%d, cap=%d", len(log1.data), cap(log1.data))
+	t.Logf("log2 Len=%d, cap=%d", len(log2.data), cap(log2.data))
+	t.Logf("log3 Len=%d, cap=%d", len(log3.data), cap(log3.data))
+	t.Logf("log4 Len=%d, cap=%d", len(log4.data), cap(log4.data))
+
+	must.BeEqual(t, []interface{}{1, 2}, log1.data, "first data was not as expected")
+	must.BeEqual(t, []interface{}{1, 2, 3}, log2.data, "second data was not as expected")
+	must.BeEqual(t, []interface{}{1, 2, 3, 4}, log3.data, "third data was not as expected")
+	must.BeEqual(t, []interface{}{1, 2, 3, 5}, log4.data, "fourth data was not as expected")
 }

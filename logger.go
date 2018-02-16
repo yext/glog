@@ -71,9 +71,11 @@ func (l *Logger) WithData(vars ...interface{}) *Logger {
 // AppendData creates a Logger from an existing logger,
 // appending the provided data to the data in the existing logger.
 func (l *Logger) AppendData(vars ...interface{}) *Logger {
+	newData := make([]interface{}, len(l.data))
+	copy(newData, l.data)
 	return &Logger{
 		loggingT: l.loggingT,
-		data:     append(l.data, vars...),
+		data:     append(newData, vars...),
 		prefix:   l.prefix,
 	}
 }
@@ -148,12 +150,12 @@ func (l *Logger) ErrorfIf(err error, format string, args ...interface{}) {
 	}
 }
 
-// Fatal is equivalent to the global Fatal  function, with the addition of prefix and data content from this Logger.
+// Fatal is equivalent to the global Fatal function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Fatal(args ...interface{}) {
 	l.print(fatalLog, l.extendWithPfx(args)...)
 }
 
-// FatalIf is equivalent to the global FatalIf  function, with the addition of prefix and data content from this Logger.
+// FatalIf is equivalent to the global FatalIf function, with the addition of prefix and data content from this Logger.
 func (l *Logger) FatalIf(err error, args ...interface{}) {
 	if err != nil {
 		if args != nil {
@@ -168,12 +170,12 @@ func (l *Logger) FatalIf(err error, args ...interface{}) {
 	}
 }
 
-// Fatalln is equivalent to the global Fatalln  function, with the addition of prefix and data content from this Logger.
+// Fatalln is equivalent to the global Fatalln function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Fatalln(args ...interface{}) {
 	l.println(fatalLog, l.extendWithPfx(args)...)
 }
 
-// Fatalf is equivalent to the global Fatalf  function, with the addition of prefix and data content from this Logger.
+// Fatalf is equivalent to the global Fatalf function, with the addition of prefix and data content from this Logger.
 func (l *Logger) Fatalf(format string, args ...interface{}) {
 	l.printf(fatalLog, l.pfx(format), l.extend(args)...)
 }
