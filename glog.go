@@ -702,6 +702,12 @@ func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int, deta
 	data := buf.Bytes()
 	n, _ := output.Write(data)
 	if s == fatalLog {
+		// If we got here via Exit rather than Fatal, print no stacks.
+		if atomic.LoadUint32(&fatalNoStacks) > 0 {
+			l.mu.Unlock()
+			timeoutFlush(10 * time.Second)
+			os.Exit(1)
+		}
 		output.Write(stacks(false))
 		l.mu.Unlock()
 		timeoutFlush(10 * time.Second)
@@ -1126,4 +1132,35 @@ func Fatalf(format string, args ...interface{}) {
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func FatalfWithDepth(extraDepth int, format string, args ...interface{}) {
 	logging.printfWithDepth(fatalLog, extraDepth, format, args...)
+}
+
+// fatalNoStacks is non-zero if we are to exit without dumping goroutine stacks.
+// It allows Exit and relatives to use the Fatal logs.
+var fatalNoStacks uint32
+
+// Exit logs to the FATAL, ERROR, WARNING, and INFO logs, then calls os.Exit(1).
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func Exit(args ...interface{}) {
+	atomic.StoreUint32(&fatalNoStacks, 1)
+	logging.print(fatalLog, args...)
+}
+
+// ExitWithDepth acts as Exit but uses depth to determine which call frame to log.
+// ExitWithDepth(0, "msg") is the same as Exit("msg").
+func ExitWithDepth(depth int, args ...interface{}) {
+	atomic.StoreUint32(&fatalNoStacks, 1)
+	logging.printWithDepth(fatalLog, depth, args...)
+}
+
+// Exitln logs to the FATAL, ERROR, WARNING, and INFO logs, then calls os.Exit(1).
+func Exitln(args ...interface{}) {
+	atomic.StoreUint32(&fatalNoStacks, 1)
+	logging.println(fatalLog, args...)
+}
+
+// Exitf logs to the FATAL, ERROR, WARNING, and INFO logs, then calls os.Exit(1).
+// Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
+func Exitf(format string, args ...interface{}) {
+	atomic.StoreUint32(&fatalNoStacks, 1)
+	logging.printf(fatalLog, format, args...)
 }
