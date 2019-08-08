@@ -622,10 +622,23 @@ func (l *loggingT) getEvent(s severity, args ...interface{}) Event {
 	return NewEvent(s, mess, dataArgs, 1, frames)
 }
 
+// formatErrors prints errors with detail, to get stack traces for xerrors.
+func formatErrors(args []interface{}) []interface{} {
+	var r = make([]interface{}, len(args))
+	for i, arg := range args {
+		if err, ok := arg.(error); ok {
+			r[i] = fmt.Sprintf("%+v", err)
+		} else {
+			r[i] = arg
+		}
+	}
+	return r
+}
+
 func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interface{}) {
 	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
-	fmt.Fprintln(buf, args...)
+	fmt.Fprintln(buf, formatErrors(args)...)
 
 	message := buf.Bytes()
 	mess := make([]byte, len(message))
@@ -645,7 +658,7 @@ func (l *loggingT) print(s severity, args ...interface{}) int {
 func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{}) int {
 	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
-	fmt.Fprint(buf, args...)
+	fmt.Fprint(buf, formatErrors(args)...)
 
 	message := buf.Bytes()
 	mess := make([]byte, len(message))
@@ -669,7 +682,7 @@ func (l *loggingT) printf(s severity, format string, args ...interface{}) {
 func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, args ...interface{}) {
 	args, dataArgs := filterData(args)
 	buf := l.headerWithDepth(s, extraDepth)
-	fmt.Fprintf(buf, format, args...)
+	fmt.Fprintf(buf, format, formatErrors(args)...)
 
 	message := buf.Bytes()
 	mess := make([]byte, len(message))
@@ -1005,7 +1018,7 @@ func Warningf(format string, args ...interface{}) {
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func WarningfIf(err error, format string, args ...interface{}) {
 	if err != nil {
-		format += ": %v"
+		format += ": %+v"
 		args = append(args, err)
 		logging.printf(warningLog, format, args...)
 	}
@@ -1068,7 +1081,7 @@ func Errorf(format string, args ...interface{}) {
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func ErrorfIf(err error, format string, args ...interface{}) {
 	if err != nil {
-		format += ": %v"
+		format += ": %+v"
 		args = append(args, err)
 		logging.printf(errorLog, format, args...)
 	}
