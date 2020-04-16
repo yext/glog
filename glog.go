@@ -592,13 +592,26 @@ func formatErrorStack(err error) string {
 	}
 }
 
+// getStackFrames returns any errgo error stack frames contained in the args.
 func getStackFrames(args []interface{}) (string, []uintptr) {
 	for _, arg := range args {
 		if err, ok := arg.(error); ok {
-			return formatErrorStack(err), errgo.StackFrameInfo(err)
+			// NOTE: errgo.StackFrameInfo returns stack traces from outer to inner.
+			// The glog.Event type expects inner to outer, so reverse it here.
+			return formatErrorStack(err), reverse(errgo.StackFrameInfo(err))
 		}
 	}
 	return "", nil
+}
+
+// reverse reverses the given slice in place and returns it.
+func reverse(a []uintptr) []uintptr {
+	// From SliceTricks.
+	for i := len(a)/2 - 1; i >= 0; i-- {
+		opp := len(a) - 1 - i
+		a[i], a[opp] = a[opp], a[i]
+	}
+	return a
 }
 
 func (l *loggingT) println(s severity, args ...interface{}) {
@@ -687,6 +700,16 @@ func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, ar
 	message := buf.Bytes()
 	mess := make([]byte, len(message))
 	copy(mess, message)
+
+	// If an error is provided in the arguments, pass the first one to backends.
+	// No reason to pass the first one over any other, but it's unlikely to
+	// matter in practice.
+	for _, arg := range args {
+		if err, ok := arg.(error); ok {
+			dataArgs = append(dataArgs, ErrorArg{err})
+			break
+		}
+	}
 
 	details, frames := getStackFrames(args)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
