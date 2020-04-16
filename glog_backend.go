@@ -30,7 +30,7 @@ type Event struct {
 	Severity   string
 	Message    []byte
 	Data       []interface{}
-	StackTrace []uintptr
+	StackTrace []uintptr // inner to outer
 }
 
 // NewEvent creates a glog.Event from the logged event's severity,
