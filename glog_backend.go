@@ -38,7 +38,7 @@ type Event struct {
 // any other arguments passed to the log call.
 // NewEvent separates out any items tagged by Data() and stores them
 // in Event.Data.
-func NewEvent(s severity, message []byte, dataArgs []interface{}, extraDepth int, frames []uintptr) Event {
+func NewEvent(s severity, message []byte, dataArgs []interface{}, extraDepth int) Event {
 	var stackTrace []uintptr
 
 	if s >= errorLog {
@@ -47,7 +47,6 @@ func NewEvent(s severity, message []byte, dataArgs []interface{}, extraDepth int
 		stackTrace = callers[:written]
 	}
 
-	stackTrace = append(frames, stackTrace...)
 	return Event{
 		Severity:   severityName[s],
 		Message:    message,
