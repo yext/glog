@@ -74,8 +74,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/yext/errgo"
 )
 
 type Writer interface {
@@ -558,62 +556,6 @@ func (buf *buffer) someDigits(i, d int) int {
 	return copy(buf.tmp[i:], buf.tmp[j:])
 }
 
-func formatErrorStack(err error) string {
-	var s []byte
-	if err == nil {
-		return ""
-	}
-
-	for {
-		s = append(s, '\t')
-		if err, ok := err.(errgo.Locationer); ok {
-			loc := err.Location()
-			if loc.IsSet() {
-				s = append(s, loc.String()...)
-				s = append(s, " "...)
-			}
-		}
-		if werr, ok := err.(errgo.Wrapper); ok {
-			s = append(s, werr.Message()...)
-			if cerr, ok := err.(errgo.Causer); ok && cerr.Cause() != nil {
-				s = append(s, " ("...)
-				s = append(s, cerr.Cause().Error()...)
-				s = append(s, ')')
-			}
-			err = werr.Underlying()
-		} else {
-			s = append(s, err.Error()...)
-			err = nil
-		}
-		s = append(s, '\n')
-		if err == nil {
-			return string(s)
-		}
-	}
-}
-
-// getStackFrames returns any errgo error stack frames contained in the args.
-func getStackFrames(args []interface{}) (string, []uintptr) {
-	for _, arg := range args {
-		if err, ok := arg.(error); ok {
-			// NOTE: errgo.StackFrameInfo returns stack traces from outer to inner.
-			// The glog.Event type expects inner to outer, so reverse it here.
-			return formatErrorStack(err), reverse(errgo.StackFrameInfo(err))
-		}
-	}
-	return "", nil
-}
-
-// reverse reverses the given slice in place and returns it.
-func reverse(a []uintptr) []uintptr {
-	// From SliceTricks.
-	for i := len(a)/2 - 1; i >= 0; i-- {
-		opp := len(a) - 1 - i
-		a[i], a[opp] = a[opp], a[i]
-	}
-	return a
-}
-
 func (l *loggingT) println(s severity, args ...interface{}) {
 	l.printlnWithDepth(s, 1, args...)
 }
@@ -630,9 +572,7 @@ func (l *loggingT) getEvent(s severity, args ...interface{}) Event {
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
-	_, frames := getStackFrames(args)
-
-	return NewEvent(s, mess, dataArgs, 1, frames)
+	return NewEvent(s, mess, dataArgs, 1)
 }
 
 // formatErrors prints errors with detail, to get stack traces for xerrors.
@@ -657,10 +597,9 @@ func (l *loggingT) printlnWithDepth(s severity, extraDepth int, args ...interfac
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
-	details, frames := getStackFrames(args)
-	l.outputWithDepth(s, buf, extraDepth, details)
+	l.outputWithDepth(s, buf, extraDepth)
 
-	e := NewEvent(s, mess, dataArgs, extraDepth, frames)
+	e := NewEvent(s, mess, dataArgs, extraDepth)
 	eventForBackends(e)
 }
 
@@ -677,13 +616,12 @@ func (l *loggingT) printWithDepth(s severity, extraDepth int, args ...interface{
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
-	details, frames := getStackFrames(args)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
-	n := l.outputWithDepth(s, buf, extraDepth, details)
+	n := l.outputWithDepth(s, buf, extraDepth)
 
-	e := NewEvent(s, mess, dataArgs, extraDepth, frames)
+	e := NewEvent(s, mess, dataArgs, extraDepth)
 	eventForBackends(e)
 	return n
 }
@@ -711,22 +649,21 @@ func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, ar
 		}
 	}
 
-	details, frames := getStackFrames(args)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
-	l.outputWithDepth(s, buf, extraDepth, details)
+	l.outputWithDepth(s, buf, extraDepth)
 
-	e := NewEvent(s, mess, dataArgs, extraDepth, frames)
+	e := NewEvent(s, mess, dataArgs, extraDepth)
 	eventForBackends(e)
 }
 
 // output writes the data to the log files and releases the buffer.
 func (l *loggingT) output(s severity, buf *buffer) {
-	l.outputWithDepth(s, buf, 1, "")
+	l.outputWithDepth(s, buf, 1)
 }
 
-func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int, details string) int {
+func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int) int {
 	l.mu.Lock()
 	if l.traceLocation.isSet() {
 		_, file, line, ok := runtime.Caller(3 + extraDepth)
@@ -734,7 +671,6 @@ func (l *loggingT) outputWithDepth(s severity, buf *buffer, extraDepth int, deta
 			buf.Write(stacks(false))
 		}
 	}
-	fmt.Fprint(buf, details)
 	data := buf.Bytes()
 	n, _ := output.Write(data)
 	if s == fatalLog {
