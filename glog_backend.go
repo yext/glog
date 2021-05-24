@@ -69,6 +69,11 @@ func filterData(args []interface{}) ([]interface{}, []interface{}) {
 			dataArgs = append(dataArgs, argd.d)
 		} else {
 			realArgs = append(realArgs, arg)
+			// PATCH(jwoglom): Propagate an error type passed directly to
+			// glog as an implicit glog.ErrorArg
+			if errarg, ok := arg.(error); ok {
+				dataArgs = append(dataArgs, ErrorArg{errarg})
+			}
 		}
 	}
 	return realArgs, dataArgs
