@@ -20,3 +20,10 @@ func (xe ErrorArg) RootCause() error {
 	}
 	return err
 }
+
+// FormatStringArg is used to capture the raw format string passed to glog,
+// which often contains an error message without identifying details that
+// can be used to help group the message.
+type FormatStringArg struct {
+	Format string
+}

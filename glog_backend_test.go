@@ -2,6 +2,7 @@ package glog
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -85,6 +86,35 @@ func TestIgnoreData(t *testing.T) {
 	}
 
 	waitForData(t, comm, message, "data1")
+}
+
+func TestFormatString(t *testing.T) {
+	defer resetOutput(setBuffer())
+
+	comm := RegisterBackend()
+
+	message := "error: test error"
+	formatMsg := "error: %s"
+	Errorf(formatMsg, errors.New("test error"))
+
+	if !contains(message, t) {
+		t.Error("glog did not process errorf to stdout")
+	}
+	waitForData(t, comm, message, FormatStringArg{formatMsg})
+}
+
+func TestErrorArgs(t *testing.T) {
+	defer resetOutput(setBuffer())
+
+	comm := RegisterBackend()
+
+	err := errors.New("test error")
+	Error(err)
+
+	if !contains(err.Error(), t) {
+		t.Error("glog did not process error message to stdout")
+	}
+	waitForData(t, comm, err.Error(), ErrorArg{err})
 }
 
 func waitForData(t *testing.T, comm <-chan Event, expectedMessage string, expectedData ...interface{}) {

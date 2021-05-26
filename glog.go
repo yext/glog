@@ -639,21 +639,14 @@ func (l *loggingT) printfWithDepth(s severity, extraDepth int, format string, ar
 	mess := make([]byte, len(message))
 	copy(mess, message)
 
-	// If an error is provided in the arguments, pass the first one to backends.
-	// No reason to pass the first one over any other, but it's unlikely to
-	// matter in practice.
-	for _, arg := range args {
-		if err, ok := arg.(error); ok {
-			dataArgs = append(dataArgs, ErrorArg{err})
-			break
-		}
-	}
-
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	l.outputWithDepth(s, buf, extraDepth)
 
+	// NOTE(jwoglom): add format string argument as data field
+	// that can be parsed by backends.
+	dataArgs = append(dataArgs, FormatStringArg{format})
 	e := NewEvent(s, mess, dataArgs, extraDepth)
 	eventForBackends(e)
 }
