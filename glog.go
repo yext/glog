@@ -95,7 +95,8 @@ var ExternalOutput externalWriter
 type externalWriter struct{}
 
 func (er externalWriter) Write(b []byte) (n int, err error) {
-	return logging.printWithDepth(infoLog, 3, string(b)), nil
+	logging.printWithDepth(infoLog, 3, string(b))
+	return len(b), nil
 }
 
 // severity identifies the sort of log: info, warning etc. It also implements
