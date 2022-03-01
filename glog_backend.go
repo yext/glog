@@ -2,11 +2,13 @@ package glog
 
 import (
 	"runtime"
+	"sync"
 )
 
 var (
-	messageChan  = make(chan Event, 10)
-	backendChans []chan<- Event
+	messageChan   = make(chan Event, 10)
+	backendChans  []chan<- Event
+	backendChanMu sync.RWMutex
 )
 
 type data struct {
@@ -86,6 +88,8 @@ func filterData(args []interface{}) ([]interface{}, []interface{}) {
 // that the call to this function "happens before" any events to be
 // logged to this channel or other calls to RegisterBackend().
 func RegisterBackend() <-chan Event {
+	backendChanMu.Lock()
+	defer backendChanMu.Unlock()
 	if len(backendChans) == 0 {
 		go broadcastEvents()
 	}
@@ -98,7 +102,10 @@ func RegisterBackend() <-chan Event {
 // eventForBackends creates and writes a glog.Event to the message channel
 // if and only if we have registered backends.
 func eventForBackends(e Event) {
-	if len(backendChans) > 0 {
+	backendChanMu.RLock()
+	hasBackends := len(backendChans) > 0
+	backendChanMu.RUnlock()
+	if hasBackends {
 		select {
 		case messageChan <- e:
 		default:
@@ -108,6 +115,9 @@ func eventForBackends(e Event) {
 
 func broadcastEvents() {
 	for e := range messageChan {
+		backendChanMu.RLock()
+		backendChans := backendChans
+		backendChanMu.RUnlock()
 		for _, c := range backendChans {
 			select {
 			case c <- e:
