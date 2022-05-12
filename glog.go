@@ -76,17 +76,22 @@ import (
 	"time"
 )
 
-type Writer interface {
-	io.Writer
-	Flush()
+var output = writer{os.Stdout}
+
+// SetOutput overrides the logging output writer.
+//
+// If the provided writer is an *os.File, or otherwise has a 'Sync() error'
+// method, it is called periodically (and by Flush) to commit pending data.
+func SetOutput(w io.Writer) {
+	output = writer{w}
 }
 
-var output Writer = fileWriter{os.Stdout}
+type writer struct{ io.Writer }
 
-type fileWriter struct{ *os.File }
-
-func (wr fileWriter) Flush() {
-	wr.File.Sync()
+func (w writer) Flush() {
+	if s, ok := w.Writer.(interface{ Sync() error }); ok {
+		_ = s.Sync()
+	}
 }
 
 // This ExternalOutput is to be used only for external logs

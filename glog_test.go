@@ -28,12 +28,8 @@ import (
 
 var fakeStdout bytes.Buffer
 
-type bufWriter struct{ *bytes.Buffer }
-
-func (bufWriter) Flush() {}
-
 func setBuffer() *bytes.Buffer {
-	output = bufWriter{&fakeStdout}
+	SetOutput(&fakeStdout)
 	return &fakeStdout
 }
 
