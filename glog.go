@@ -18,6 +18,8 @@
 // It provides functions Info, Warning, Error, Fatal, plus formatting variants such as
 // Infof. It also provides V-style logging controlled by the -v and -vmodule=file=2 flags.
 //
+// Deprecated: Package glog is deprecated and is no longer actively maintained.
+//
 // Basic examples:
 //
 //	glog.Info("Prepare to repel boarders")
